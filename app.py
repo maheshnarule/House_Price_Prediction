@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 # Load model and data
 model = pickle.load(open("model.pkl", "rb"))
-#data = pd.read_csv("C:/House/house_clean (1).csv")  # raw string for Windows paths
+data = pd.read_csv("house_clean (1).csv")  # raw string for Windows paths
 
 # Extract feature columns
 X_columns = list(model.feature_names_in_)
