@@ -39,33 +39,15 @@ def home():
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
-        name = request.form['name']
         email = request.form['email']
-        password = request.form['password']
+        password = request.form['password']  # Store hashed password in production!
 
-        conn = mysql.connector.connect(**db_config)
-        cursor = conn.cursor(dictionary=True)
-
-        # Check if email already exists
-        cursor.execute("SELECT * FROM users1 WHERE email = %s", (email,))
-        existing_user = cursor.fetchone()
-
-        if existing_user:
-            flash("User already exists. Please login.")
-            cursor.close()
-            conn.close()
+        try:
+            cursor.execute("INSERT INTO users1 (email, password) VALUES (%s, %s)", (email, password))
+            conn.commit()
             return redirect(url_for('login'))
-
-        # Insert new user
-        cursor.execute("INSERT INTO users1 (name, email, password) VALUES (%s, %s, %s)",
-                       (name, email, password))
-        conn.commit()
-
-        cursor.close()
-        conn.close()
-
-        flash("Registration successful! Please login.")
-        return redirect(url_for('login'))
+        except:
+            return render_template('signup.html', error="Username already exists")
 
     return render_template('signup.html')
 
