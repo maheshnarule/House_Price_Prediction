@@ -13,7 +13,7 @@
             height: 100%;
             margin: 0;
             font-family: 'Segoe UI', sans-serif;
-            background: url('/static/images/predict_bg.jpg') no-repeat center center fixed;
+            background: url('/static/images/image33.jpeg') no-repeat center center fixed;
             background-size: cover;
         }
 
@@ -72,10 +72,20 @@
             font-weight: bold;
             color: #007BFF;
         }
+
+        .logout-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
     </style>
 </head>
 <body>
     <div class="overlay"></div>
+
+    <!-- Logout Button -->
+    <a href="/logout" class="btn btn-danger logout-btn">Logout</a>
+
     <div class="form-container">
         <h2>🏠 Bengaluru House Price Prediction</h2>
         <form action="/predict" method="post">
@@ -88,8 +98,6 @@
             <input type="number" name="sqft" class="form-control" placeholder="Total Square Feet" min="300" max="10000" step="50" required>
             <input type="number" name="bath" class="form-control" placeholder="Number of Bathrooms" min="1" max="10" step="1" required>
             <input type="number" name="bhk" class="form-control" placeholder="Number of BHK" min="1" max="10" step="1" required>
-
-
 
             <button type="submit" class="btn-predict">Predict Price</button>
         </form>
