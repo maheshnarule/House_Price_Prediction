@@ -1,16 +1,13 @@
 from flask import Flask, request, render_template, redirect, url_for, session, flash
 import mysql.connector
-from mysql.connector import pooling
 import pickle
 import numpy as np
 import pandas as pd
 
 app = Flask(__name__)
-app.secret_key = "your_secret_key"  # Required for sessions
+app.secret_key = "your_secret_key"
 
-# =======================
-# MySQL Connection Pool
-# =======================
+# MySQL Config
 db_config = {
     "host": "mysql-maheshproject.alwaysdata.net",
     "user": "425294",
@@ -18,35 +15,23 @@ db_config = {
     "database": "maheshproject_qst"
 }
 
-connection_pool = pooling.MySQLConnectionPool(pool_name="mypool",
-                                              pool_size=5,
-                                              **db_config)
-
 def get_connection():
-    return connection_pool.get_connection()
+    return mysql.connector.connect(**db_config)
 
-# =======================
-# Load ML Model & Data
-# =======================
+# Load Model & Data
 model = pickle.load(open("model.pkl", "rb"))
 data = pd.read_csv("house_clean (1).csv")
 X_columns = list(model.feature_names_in_)
-locations = [col for col in X_columns if col not in ['total_sqft', 'bath', 'bhk']]
-
-# =======================
-# Routes
-# =======================
 
 @app.route('/')
 def home():
     return render_template('index.html')
 
-# Sign Up
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
         email = request.form['email']
-        password = request.form['password']  # In production: hash passwords!
+        password = request.form['password']
 
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
@@ -55,22 +40,21 @@ def signup():
         existing_user = cursor.fetchone()
 
         if existing_user:
-            flash("User already exists. Please login.", "error")
             cursor.close()
             conn.close()
+            flash("User already exists. Please login.", "error")
             return redirect(url_for('login'))
 
         cursor.execute("INSERT INTO users1 (email, password) VALUES (%s, %s)", (email, password))
         conn.commit()
-
         cursor.close()
         conn.close()
+
         flash("Account created! Please login.", "success")
         return redirect(url_for('login'))
 
     return render_template('signup.html')
 
-# Login
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -93,13 +77,11 @@ def login():
 
     return render_template('login.html')
 
-# Logout
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect(url_for('home'))
 
-# Prediction Form (Protected)
 @app.route('/predict_form')
 def predict_form():
     if not session.get('logged_in'):
@@ -107,7 +89,6 @@ def predict_form():
     location_list = sorted(data['location'].unique())
     return render_template('predict.html', locations=location_list)
 
-# Prediction Endpoint
 @app.route('/predict', methods=['POST'])
 def predict():
     if not session.get('logged_in'):
@@ -134,8 +115,5 @@ def predict():
     except Exception as e:
         return str(e)
 
-# =======================
-# Main
-# =======================
 if __name__ == "__main__":
     app.run(debug=True)
