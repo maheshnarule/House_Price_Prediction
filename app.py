@@ -9,10 +9,10 @@ app.secret_key = "your_secret_key"
 
 # MySQL Config
 db_config = {
-    "host": "mysql-maheshproject.alwaysdata.net",
-    "user": "425294",
-    "password": "Mahesh@123",
-    "database": "maheshproject_qst"
+    "host": "sql103.infinityfree.com",
+    "user": "if0_39578571",
+    "password": "8i6iiQDXcRAfktw",
+    "database": "if0_39578571_mycompany"
 }
 
 def get_connection():
@@ -36,7 +36,7 @@ def signup():
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
 
-        cursor.execute("SELECT * FROM users1 WHERE email=%s", (email,))
+        cursor.execute("SELECT * FROM users WHERE email=%s", (email,))
         existing_user = cursor.fetchone()
 
         if existing_user:
@@ -45,7 +45,7 @@ def signup():
             flash("User already exists. Please login.", "error")
             return redirect(url_for('login'))
 
-        cursor.execute("INSERT INTO users1 (email, password) VALUES (%s, %s)", (email, password))
+        cursor.execute("INSERT INTO users (email, password) VALUES (%s, %s)", (email, password))
         conn.commit()
         cursor.close()
         conn.close()
@@ -63,7 +63,7 @@ def login():
 
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM users1 WHERE email=%s AND password=%s", (email, password))
+        cursor.execute("SELECT * FROM users WHERE email=%s AND password=%s", (email, password))
         user = cursor.fetchone()
         cursor.close()
         conn.close()
