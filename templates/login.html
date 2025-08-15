@@ -51,15 +51,6 @@
     </style>
 </head>
 <body>
-    {% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    {% for category, message in messages %}
-      <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }}">
-        {{ message }}
-      </div>
-    {% endfor %}
-  {% endif %}
-{% endwith %}
 
 
     <div class="overlay"></div>
@@ -79,5 +70,6 @@
     </div>
 </body>
 </html>
+
 
 
