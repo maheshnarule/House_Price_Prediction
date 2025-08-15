@@ -16,7 +16,7 @@ locations = [col for col in X_columns if col not in ['total_sqft', 'bath', 'bhk'
 # Landing page with carousel
 @app.route('/')
 def home():
-    return render_template('index.html')
+    return render_template('predict.html')
 
 # Prediction form page
 @app.route('/predict_form')
