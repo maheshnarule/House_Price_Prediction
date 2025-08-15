@@ -1,40 +1,102 @@
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template, redirect, url_for, session
+import mysql.connector
 import pickle
 import numpy as np
 import pandas as pd
 
 app = Flask(__name__)
+app.secret_key = "your_secret_key"  # Required for sessions
 
-# Load model and data
+# =======================
+# MySQL Database Connection
+# =======================
+conn = mysql.connector.connect(
+    host="sql.freedb.tech",
+    user="freedb_mahesh2025",         # your MySQL username
+    password="3wFa@3FQf6NCd5Y",  # your MySQL password
+    database="freedb_mahesh_db"
+)
+cursor = conn.cursor(dictionary=True)
+
+# =======================
+# Load ML Model & Data
+# =======================
 model = pickle.load(open("model.pkl", "rb"))
-data = pd.read_csv("house_clean (1).csv")  # raw string for Windows paths
-
-# Extract feature columns
+data = pd.read_csv("house_clean (1).csv")
 X_columns = list(model.feature_names_in_)
 locations = [col for col in X_columns if col not in ['total_sqft', 'bath', 'bhk']]
 
-# Landing page with carousel
+# =======================
+# Routes
+# =======================
+
+# Landing Page
 @app.route('/')
 def home():
     return render_template('index.html')
 
-# Prediction form page
+# Signup Page
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']  # Store hashed password in production!
+
+        try:
+            cursor.execute("INSERT INTO users (email, password) VALUES (%s, %s)", (email, password))
+            conn.commit()
+            return redirect(url_for('login'))
+        except:
+            return render_template('signup.html', error="Username already exists")
+
+    return render_template('signup.html')
+
+# Login Page
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']
+
+        cursor.execute("SELECT * FROM users WHERE email=%s AND password=%s", (email, password))
+        user = cursor.fetchone()
+
+        if user:
+            session['logged_in'] = True
+            session['email'] = email
+            return redirect(url_for('predict_form'))
+        else:
+            return render_template('login.html', error="Invalid email or password")
+
+    return render_template('login.html')
+
+# Logout
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('home'))
+
+# Prediction Form Page (Protected)
 @app.route('/predict_form')
 def predict_form():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
     location_list = sorted(data['location'].unique())
     return render_template('predict.html', locations=location_list)
 
-# Prediction endpoint
+# Prediction Endpoint (Protected)
 @app.route('/predict', methods=['POST'])
 def predict():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+
     try:
-        # Get form data
         sqft = float(request.form['sqft'])
         bath = int(request.form['bath'])
         bhk = int(request.form['bhk'])
         location = request.form['location']
 
-        # Create feature array
+        # Prepare input
         x = np.zeros(len(X_columns))
         x[X_columns.index('total_sqft')] = sqft
         x[X_columns.index('bath')] = bath
@@ -45,13 +107,14 @@ def predict():
         # Predict
         price = model.predict([x])[0]
         price = round(price, 2)
-
-        # Render prediction page with result
         return render_template('predict.html',
                                prediction_text=f"💰 Predicted Price: ₹ {price} Lakhs",
                                locations=sorted(data['location'].unique()))
     except Exception as e:
         return str(e)
 
+# =======================
+# Main
+# =======================
 if __name__ == "__main__":
     app.run(debug=True)
