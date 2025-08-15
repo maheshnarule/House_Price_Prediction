@@ -14,74 +14,67 @@ db_config = {
     "password": "8i6iiQDXcRAfktw",
     "database": "if0_39578571_mycompany"
 }
+cursor = conn.cursor(dictionary=True)
 
-def get_connection():
-    return mysql.connector.connect(**db_config)
-
-# Load Model & Data
+# =======================
+# Load ML Model & Data
+# =======================
 model = pickle.load(open("model.pkl", "rb"))
 data = pd.read_csv("house_clean (1).csv")
 X_columns = list(model.feature_names_in_)
+locations = [col for col in X_columns if col not in ['total_sqft', 'bath', 'bhk']]
 
+# =======================
+# Routes
+# =======================
+
+# Landing Page
 @app.route('/')
 def home():
     return render_template('index.html')
 
+# Signup Page
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
         email = request.form['email']
-        password = request.form['password']
+        password = request.form['password']  # Store hashed password in production!
 
-        conn = get_connection()
-        cursor = conn.cursor(dictionary=True)
-
-        cursor.execute("SELECT * FROM users WHERE email=%s", (email,))
-        existing_user = cursor.fetchone()
-
-        if existing_user:
-            cursor.close()
-            conn.close()
-            flash("User already exists. Please login.", "error")
+        try:
+            cursor.execute("INSERT INTO users (email, password) VALUES (%s, %s)", (email, password))
+            conn.commit()
             return redirect(url_for('login'))
-
-        cursor.execute("INSERT INTO users (email, password) VALUES (%s, %s)", (email, password))
-        conn.commit()
-        cursor.close()
-        conn.close()
-
-        flash("Account created! Please login.", "success")
-        return redirect(url_for('login'))
+        except:
+            return render_template('signup.html', error="Username already exists")
 
     return render_template('signup.html')
 
+# Login Page
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         email = request.form['email']
         password = request.form['password']
 
-        conn = get_connection()
-        cursor = conn.cursor(dictionary=True)
         cursor.execute("SELECT * FROM users WHERE email=%s AND password=%s", (email, password))
         user = cursor.fetchone()
-        cursor.close()
-        conn.close()
 
         if user:
             session['logged_in'] = True
             session['email'] = email
             return redirect(url_for('predict_form'))
         else:
-            flash("Invalid email or password", "error")
+            return render_template('login.html', error="Invalid email or password")
 
     return render_template('login.html')
 
+# Logout
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect(url_for('home'))
 
+# Prediction Form Page (Protected)
 @app.route('/predict_form')
 def predict_form():
     if not session.get('logged_in'):
@@ -89,6 +82,7 @@ def predict_form():
     location_list = sorted(data['location'].unique())
     return render_template('predict.html', locations=location_list)
 
+# Prediction Endpoint (Protected)
 @app.route('/predict', methods=['POST'])
 def predict():
     if not session.get('logged_in'):
@@ -100,6 +94,7 @@ def predict():
         bhk = int(request.form['bhk'])
         location = request.form['location']
 
+        # Prepare input
         x = np.zeros(len(X_columns))
         x[X_columns.index('total_sqft')] = sqft
         x[X_columns.index('bath')] = bath
@@ -107,6 +102,7 @@ def predict():
         if location in X_columns:
             x[X_columns.index(location)] = 1
 
+        # Predict
         price = model.predict([x])[0]
         price = round(price, 2)
         return render_template('predict.html',
@@ -115,5 +111,8 @@ def predict():
     except Exception as e:
         return str(e)
 
+# =======================
+# Main
+# =======================
 if __name__ == "__main__":
     app.run(debug=True)
