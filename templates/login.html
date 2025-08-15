@@ -51,6 +51,14 @@
     </style>
 </head>
 <body>
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+        {% for message in messages %}
+            <p style="color:red;">{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
     <div class="overlay"></div>
     <div class="form-container">
         <h3 class="text-center mb-4">Login</h3>
@@ -68,3 +76,4 @@
     </div>
 </body>
 </html>
+
