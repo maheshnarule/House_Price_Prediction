@@ -35,21 +35,32 @@ locations = [col for col in X_columns if col not in ['total_sqft', 'bath', 'bhk'
 def home():
     return render_template('index.html')
 
-# Signup Page
-@app.route('/signup', methods=['GET', 'POST'])
+#sign up
+@app.route("/signup", methods=["GET", "POST"])
 def signup():
-    if request.method == 'POST':
-        email = request.form['email']
-        password = request.form['password']  # Store hashed password in production!
+    if request.method == "POST":
+        email = request.form["email"]
+        password = request.form["password"]
 
-        try:
-            cursor.execute("INSERT INTO users1 (email, password) VALUES (%s, %s)", (email, password))
-            conn.commit()
-            return redirect(url_for('login'))
-        except:
-            return render_template('signup.html', error="Username already exists")
+        # Check if user already exists
+        cursor = mysql.connection.cursor()
+        cursor.execute("SELECT * FROM users1 WHERE email = %s", (email,))
+        existing_user = cursor.fetchone()
 
-    return render_template('signup.html')
+        if existing_user:
+            flash("User already exists. Please login.", "error")
+            return redirect(url_for("login"))  # Redirect to login page
+
+        # If not exists, insert new user
+        cursor.execute("INSERT INTO users1 (email, password) VALUES (%s, %s)", (email, password))
+        mysql.connection.commit()
+        cursor.close()
+
+        flash("Signup successful! Please login.", "success")
+        return redirect(url_for("login"))
+
+    return render_template("signup.html")
+
 
 # Login Page
 @app.route('/login', methods=['GET', 'POST'])
