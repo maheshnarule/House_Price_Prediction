@@ -1,5 +1,6 @@
-from flask import Flask, request, render_template, redirect, url_for, session
+from flask import Flask, request, render_template, redirect, url_for, session, flash
 import mysql.connector
+from mysql.connector import pooling
 import pickle
 import numpy as np
 import pandas as pd
@@ -8,15 +9,21 @@ app = Flask(__name__)
 app.secret_key = "your_secret_key"  # Required for sessions
 
 # =======================
-# MySQL Database Connection
+# MySQL Connection Pool
 # =======================
-conn = mysql.connector.connect(
-    host="mysql-maheshproject.alwaysdata.net",
-    user="425294",         # your MySQL username
-    password="Mahesh@123",  # your MySQL password
-    database="maheshproject_qst"
-)
-cursor = conn.cursor(dictionary=True)
+db_config = {
+    "host": "mysql-maheshproject.alwaysdata.net",
+    "user": "425294",
+    "password": "Mahesh@123",
+    "database": "maheshproject_qst"
+}
+
+connection_pool = pooling.MySQLConnectionPool(pool_name="mypool",
+                                              pool_size=5,
+                                              **db_config)
+
+def get_connection():
+    return connection_pool.get_connection()
 
 # =======================
 # Load ML Model & Data
@@ -30,44 +37,59 @@ locations = [col for col in X_columns if col not in ['total_sqft', 'bath', 'bhk'
 # Routes
 # =======================
 
-# Landing Page
 @app.route('/')
 def home():
     return render_template('index.html')
 
-#sign up
+# Sign Up
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
         email = request.form['email']
-        password = request.form['password']  # Store hashed password in production!
+        password = request.form['password']  # In production: hash passwords!
 
-        try:
-            cursor.execute("INSERT INTO users1 (email, password) VALUES (%s, %s)", (email, password))
-            conn.commit()
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("SELECT * FROM users1 WHERE email=%s", (email,))
+        existing_user = cursor.fetchone()
+
+        if existing_user:
+            flash("User already exists. Please login.", "error")
+            cursor.close()
+            conn.close()
             return redirect(url_for('login'))
-        except:
-            return render_template('signup.html', error="Username already exists")
+
+        cursor.execute("INSERT INTO users1 (email, password) VALUES (%s, %s)", (email, password))
+        conn.commit()
+
+        cursor.close()
+        conn.close()
+        flash("Account created! Please login.", "success")
+        return redirect(url_for('login'))
 
     return render_template('signup.html')
 
-
-# Login Page
+# Login
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         email = request.form['email']
         password = request.form['password']
 
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
         cursor.execute("SELECT * FROM users1 WHERE email=%s AND password=%s", (email, password))
         user = cursor.fetchone()
+        cursor.close()
+        conn.close()
 
         if user:
             session['logged_in'] = True
             session['email'] = email
             return redirect(url_for('predict_form'))
         else:
-            return render_template('login.html', error="Invalid email or password")
+            flash("Invalid email or password", "error")
 
     return render_template('login.html')
 
@@ -77,7 +99,7 @@ def logout():
     session.clear()
     return redirect(url_for('home'))
 
-# Prediction Form Page (Protected)
+# Prediction Form (Protected)
 @app.route('/predict_form')
 def predict_form():
     if not session.get('logged_in'):
@@ -85,7 +107,7 @@ def predict_form():
     location_list = sorted(data['location'].unique())
     return render_template('predict.html', locations=location_list)
 
-# Prediction Endpoint (Protected)
+# Prediction Endpoint
 @app.route('/predict', methods=['POST'])
 def predict():
     if not session.get('logged_in'):
@@ -97,7 +119,6 @@ def predict():
         bhk = int(request.form['bhk'])
         location = request.form['location']
 
-        # Prepare input
         x = np.zeros(len(X_columns))
         x[X_columns.index('total_sqft')] = sqft
         x[X_columns.index('bath')] = bath
@@ -105,7 +126,6 @@ def predict():
         if location in X_columns:
             x[X_columns.index(location)] = 1
 
-        # Predict
         price = model.predict([x])[0]
         price = round(price, 2)
         return render_template('predict.html',
