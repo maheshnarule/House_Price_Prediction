@@ -11,10 +11,10 @@ app.secret_key = "your_secret_key"  # Required for sessions
 # MySQL Database Connection
 # =======================
 conn = mysql.connector.connect(
-    host="sql.freedb.tech",
-    user="freedb_mahesh2025",         # your MySQL username
-    password="3wFa@3FQf6NCd5Y",  # your MySQL password
-    database="freedb_mahesh_db"
+    host="mysql-maheshproject.alwaysdata.net",
+    user="425294",         # your MySQL username
+    password="Mahesh@123",  # your MySQL password
+    database="maheshproject_qst"
 )
 cursor = conn.cursor(dictionary=True)
 
@@ -43,7 +43,7 @@ def signup():
         password = request.form['password']  # Store hashed password in production!
 
         try:
-            cursor.execute("INSERT INTO users (email, password) VALUES (%s, %s)", (email, password))
+            cursor.execute("INSERT INTO users1 (email, password) VALUES (%s, %s)", (email, password))
             conn.commit()
             return redirect(url_for('login'))
         except:
@@ -58,7 +58,7 @@ def login():
         email = request.form['email']
         password = request.form['password']
 
-        cursor.execute("SELECT * FROM users WHERE email=%s AND password=%s", (email, password))
+        cursor.execute("SELECT * FROM users1 WHERE email=%s AND password=%s", (email, password))
         user = cursor.fetchone()
 
         if user:
