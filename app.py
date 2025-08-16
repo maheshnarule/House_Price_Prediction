@@ -1,19 +1,27 @@
-from flask import Flask, request, render_template, redirect, url_for, session, flash
+from flask import Flask, request, render_template, redirect, url_for, session
 import mysql.connector
 import pickle
 import numpy as np
 import pandas as pd
+import mysql.connector
+
 
 app = Flask(__name__)
-app.secret_key = "your_secret_key"
+app.secret_key = "your_secret_key"  # Required for sessions
 
-# MySQL Config
-db_config = {
-    "host": "sql103.infinityfree.com",
-    "user": "if0_39578571",
-    "password": "8i6iiQDXcRAfktw",
-    "database": "if0_39578571_mycompany"
-}
+# =======================
+# MySQL Database Connection
+# =======================
+
+
+conn = mysql.connector.connect(
+    host="mysql-maheshproject.alwaysdata.net",
+    user="425294",         # your MySQL username
+    password="Mahesh@123",  # your MySQL password
+    database="maheshproject_qst"
+)
+
+
 cursor = conn.cursor(dictionary=True)
 
 # =======================
@@ -33,6 +41,9 @@ locations = [col for col in X_columns if col not in ['total_sqft', 'bath', 'bhk'
 def home():
     return render_template('index.html')
 
+
+
+
 # Signup Page
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
@@ -40,14 +51,23 @@ def signup():
         email = request.form['email']
         password = request.form['password']  # Store hashed password in production!
 
-        try:
-            cursor.execute("INSERT INTO users (email, password) VALUES (%s, %s)", (email, password))
-            conn.commit()
-            return redirect(url_for('login'))
-        except:
-            return render_template('signup.html', error="Username already exists")
+        # Check if email already exists
+        cursor.execute("SELECT * FROM users1 WHERE email = %s", (email,))
+        existing_user = cursor.fetchone()
+
+        if existing_user:
+            # If user already exists, show error message
+            return render_template('signup.html', error="User already exists. Please log in.")
+
+        # If not, insert the new user
+        cursor.execute("INSERT INTO users1 (email, password) VALUES (%s, %s)", (email, password))
+        conn.commit()
+        return redirect(url_for('login'))
 
     return render_template('signup.html')
+
+
+
 
 # Login Page
 @app.route('/login', methods=['GET', 'POST'])
@@ -56,7 +76,7 @@ def login():
         email = request.form['email']
         password = request.form['password']
 
-        cursor.execute("SELECT * FROM users WHERE email=%s AND password=%s", (email, password))
+        cursor.execute("SELECT * FROM users1 WHERE email=%s AND password=%s", (email, password))
         user = cursor.fetchone()
 
         if user:
@@ -116,3 +136,5 @@ def predict():
 # =======================
 if __name__ == "__main__":
     app.run(debug=True)
+
+
